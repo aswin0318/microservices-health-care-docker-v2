@@ -1,5 +1,5 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { doctorAPI } from '../services/api';
 import './Doctors.css';
 
 function Doctors() {
@@ -13,36 +13,59 @@ function Doctors() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('/api/doctors');
-      setDoctors(response.data);
-      setLoading(false);
+      setLoading(true);
+      setError('');
+      const response = await doctorAPI.getAll();
+      console.log('Doctors response:', response);
+      
+      if (Array.isArray(response)) {
+        setDoctors(response);
+      } else if (response.data && Array.isArray(response.data)) {
+        setDoctors(response.data);
+      } else {
+        setDoctors([]);
+        setError('No doctors found');
+      }
     } catch (err) {
-      setError('Failed to fetch doctors');
+      console.error('Error fetching doctors:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to fetch doctors');
+      setDoctors([]);
+    } finally {
       setLoading(false);
     }
   };
-
-  if (loading) return <div className="container"><p>Loading...</p></div>;
 
   return (
     <div className="container">
       <div className="page">
         <h1>Doctors</h1>
-        {error && <div className="error-message">{error}</div>}
-        <div className="doctors-grid">
-          {doctors.length > 0 ? (
-            doctors.map((doctor) => (
-              <div key={doctor.id} className="doctor-card">
-                <h3>{doctor.name}</h3>
-                <p><strong>Specialty:</strong> {doctor.specialty || 'General'}</p>
-                <p><strong>Email:</strong> {doctor.email}</p>
-                <button>Book Appointment</button>
+        {error && <div className="error-message">{error} <button onClick={fetchDoctors} style={{marginLeft: '10px'}}>Retry</button></div>}
+        
+        {loading && <div className="loading">Loading doctors...</div>}
+        
+        {!loading && (
+          <div className="doctors-grid">
+            {doctors.length > 0 ? (
+              doctors.map((doctor) => (
+                <div key={doctor.id} className="doctor-card">
+                  <div className="doctor-header">
+                    <h3>Dr. {doctor.name}</h3>
+                  </div>
+                  <div className="doctor-info">
+                    <p><strong>Specialty:</strong> {doctor.specialty || 'General Practice'}</p>
+                    <p><strong>Email:</strong> {doctor.email || 'N/A'}</p>
+                    {doctor.bio && <p><strong>Bio:</strong> {doctor.bio}</p>}
+                  </div>
+                  <button className="book-btn">Book Appointment</button>
+                </div>
+              ))
+            ) : (
+              <div className="no-data">
+                <p>No doctors available at the moment</p>
               </div>
-            ))
-          ) : (
-            <p>No doctors available</p>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
